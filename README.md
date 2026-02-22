@@ -136,3 +136,7 @@ make clean
 **Release workflow:** All changes go through PRs to `main`. When a PR is merged, CI auto-tags a minor version bump (e.g., `v0.1.0` → `v0.2.0`), which triggers GoReleaser to build cross-platform binaries and create a GitHub release.
 
 Before opening a PR, run `make prepare` to generate the changelog entry and get a suggested PR title and description. This requires the [Claude CLI](https://claude.ai/claude-code).
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
