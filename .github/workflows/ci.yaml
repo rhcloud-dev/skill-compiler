@@ -34,30 +34,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine version bump from commit message
+      - name: Determine version bump from commits since last tag
         id: bump
         run: |
-          MSG=$(git log -1 --format=%s)
-          BODY=$(git log -1 --format=%b)
-
-          # Determine bump type from conventional commit
-          BUMP=""
-          if echo "$MSG" | grep -qE '^.+!:' || echo "$BODY" | grep -q 'BREAKING CHANGE'; then
-            BUMP="major"
-          elif echo "$MSG" | grep -qE '^feat(\(.+\))?:'; then
-            BUMP="minor"
-          elif echo "$MSG" | grep -qE '^(fix|perf|refactor)(\(.+\))?:'; then
-            BUMP="patch"
-          fi
-
-          if [ -z "$BUMP" ]; then
-            echo "No release for: $MSG"
-            exit 0
-          fi
-
           LATEST=$(git tag --list 'v*' --sort=-v:refname | head -n1)
           if [ -z "$LATEST" ]; then
             LATEST="v0.0.0"
+          fi
+
+          # Scan all commits since last tag, pick the highest bump level
+          BUMP=""
+          while IFS= read -r -d '' COMMIT; do
+            MSG=${COMMIT%%$'\n'*}
+            if [[ "$COMMIT" == *$'\n'* ]]; then
+              BODY=${COMMIT#*$'\n'}
+            else
+              BODY=""
+            fi
+            if echo "$MSG" | grep -qE '^.+!:' || echo "$BODY" | grep -q 'BREAKING CHANGE'; then
+              BUMP="major"
+              break  # Can't go higher
+            elif echo "$MSG" | grep -qE '^feat(\(.+\))?:'; then
+              [ "$BUMP" != "major" ] && BUMP="minor"
+            elif echo "$MSG" | grep -qE '^(fix|perf|refactor)(\(.+\))?:'; then
+              [ -z "$BUMP" ] && BUMP="patch"
+            fi
+          done < <(git log "${LATEST}..HEAD" --format='%s%n%b%x00')
+
+          if [ -z "$BUMP" ]; then
+            echo "No releasable commits since $LATEST"
+            exit 0
           fi
 
           MAJOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f1)
@@ -71,7 +77,7 @@ jobs:
           esac
 
           echo "Latest tag: $LATEST"
-          echo "Bump type: $BUMP ($MSG)"
+          echo "Bump type: $BUMP"
           echo "Next tag: $NEXT"
 
           git tag "$NEXT"
