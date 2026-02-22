@@ -34,21 +34,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if release should be skipped
-        id: check
-        run: |
-          MSG=$(git log -1 --format=%s)
-          if echo "$MSG" | grep -qE '^(ci|chore|docs|style|test)(\(.+\))?:'; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping release for: $MSG"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Bump minor version and tag
-        if: steps.check.outputs.skip == 'false'
+      - name: Determine version bump from commit message
         id: bump
         run: |
+          MSG=$(git log -1 --format=%s)
+          BODY=$(git log -1 --format=%b)
+
+          # Determine bump type from conventional commit
+          BUMP=""
+          if echo "$MSG" | grep -qE '^.+!:' || echo "$BODY" | grep -q 'BREAKING CHANGE'; then
+            BUMP="major"
+          elif echo "$MSG" | grep -qE '^feat(\(.+\))?:'; then
+            BUMP="minor"
+          elif echo "$MSG" | grep -qE '^(fix|perf|refactor)(\(.+\))?:'; then
+            BUMP="patch"
+          fi
+
+          if [ -z "$BUMP" ]; then
+            echo "No release for: $MSG"
+            exit 0
+          fi
+
           LATEST=$(git tag --list 'v*' --sort=-v:refname | head -n1)
           if [ -z "$LATEST" ]; then
             LATEST="v0.0.0"
@@ -56,10 +62,16 @@ jobs:
 
           MAJOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f1)
           MINOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f2)
+          PATCH=$(echo "$LATEST" | sed 's/v//' | cut -d. -f3)
 
-          NEXT="v${MAJOR}.$((MINOR + 1)).0"
+          case "$BUMP" in
+            major) NEXT="v$((MAJOR + 1)).0.0" ;;
+            minor) NEXT="v${MAJOR}.$((MINOR + 1)).0" ;;
+            patch) NEXT="v${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+          esac
 
           echo "Latest tag: $LATEST"
+          echo "Bump type: $BUMP ($MSG)"
           echo "Next tag: $NEXT"
 
           git tag "$NEXT"

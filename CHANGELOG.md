@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - License section in README
 
 ### Changed
+- CI release job now uses conventional commit prefixes to determine semver bump type (major/minor/patch)
 - Improved release notes extraction with more robust `awk` parsing in CI workflow
 - Updated goreleaser archive configuration to use `formats` list syntax
 - Restricted CI tag and release jobs to run only on the upstream repository
