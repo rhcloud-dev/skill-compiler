@@ -42,6 +42,10 @@ jobs:
             LATEST="v0.0.0"
           fi
 
+          # Non-releasable types — commits with these types OR scopes are skipped
+          SKIP_RE='^(ci|chore|docs|style|test|build)(\(.+\))?:'
+          SKIP_SCOPE_RE='^[[:alnum:]_]+\((ci|chore|docs|style|test|build)\)!?:'
+
           # Scan all commits since last tag, pick the highest bump level
           BUMP=""
           while IFS= read -r -d '' COMMIT; do
@@ -50,6 +54,10 @@ jobs:
               BODY=${COMMIT#*$'\n'}
             else
               BODY=""
+            fi
+            # Skip non-releasable types and scopes (e.g. fix(ci): is a CI change)
+            if echo "$MSG" | grep -qE "$SKIP_RE" || echo "$MSG" | grep -qE "$SKIP_SCOPE_RE"; then
+              continue
             fi
             if echo "$MSG" | grep -qE '^.+!:' || echo "$BODY" | grep -qE '^BREAKING[ -]CHANGE:'; then
               BUMP="major"
@@ -96,13 +104,28 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.3"
-      - name: Extract release notes from CHANGELOG.md
+      - name: Generate release notes
         run: |
           TAG="${{ needs.tag.outputs.new_tag }}"
           VER="${TAG#v}"
-          awk "/^## \\[v${VER}\\]/{found=1; next} /^## \\[v/{if(found) exit} found" CHANGELOG.md > /tmp/release-notes.md
+
+          # Try CHANGELOG.md first
+          awk "/^## \\[v${VER}\\]/{found=1; next} /^## \\[v/{if(found) exit} found" CHANGELOG.md > /tmp/release-notes.md 2>/dev/null || true
+
+          # Fall back to git log if no changelog entry
           if [ ! -s /tmp/release-notes.md ]; then
-            echo "Release ${TAG}" > /tmp/release-notes.md
+            PREV=""
+            # Use git describe to find the previous tag reachable before the current tag
+            if git rev-parse "${TAG}^" >/dev/null 2>&1; then
+              PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+            fi
+
+            if [ -n "$PREV" ] && [ "$PREV" != "$TAG" ]; then
+              echo "## What's Changed" > /tmp/release-notes.md
+              git log "${PREV}..${TAG}" --format='- %s' >> /tmp/release-notes.md
+            else
+              echo "Release ${TAG}" > /tmp/release-notes.md
+            fi
           fi
       - uses: goreleaser/goreleaser-action@v7
         with:
