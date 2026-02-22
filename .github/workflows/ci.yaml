@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,3 +22,30 @@ jobs:
       - run: go build ./cmd/sc/
       - run: go test ./...
       - run: go vet ./...
+
+  tag:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump minor version and tag
+        run: |
+          LATEST=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v0.0.0"
+          fi
+
+          MAJOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f1)
+          MINOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f2)
+
+          NEXT="v${MAJOR}.$((MINOR + 1)).0"
+
+          echo "Latest tag: $LATEST"
+          echo "Next tag: $NEXT"
+
+          git tag "$NEXT"
+          git push origin "$NEXT"

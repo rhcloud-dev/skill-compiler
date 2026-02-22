@@ -4,6 +4,8 @@ LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION)"
 
 .PHONY: build test lint clean prepare
 
+all: build lint test prepare
+
 build: clean
 	go build $(LDFLAGS) -o dist/sc ./cmd/sc/
 

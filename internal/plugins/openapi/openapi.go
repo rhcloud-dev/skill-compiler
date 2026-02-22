@@ -270,9 +270,7 @@ func (p *Plugin) Parse(raw []byte, source instructions.SpecSource) (*ir.Intermed
 					secNames = append(secNames, name)
 				}
 				sort.Strings(secNames)
-				for _, name := range secNames {
-					irOp.Auth = append(irOp.Auth, name)
-				}
+				irOp.Auth = append(irOp.Auth, secNames...)
 			}
 
 			result.Operations = append(result.Operations, irOp)
