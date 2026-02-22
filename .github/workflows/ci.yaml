@@ -34,7 +34,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check if release should be skipped
+        id: check
+        run: |
+          MSG=$(git log -1 --format=%s)
+          if echo "$MSG" | grep -qE '^(ci|chore|docs|style|test)(\(.+\))?:'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping release for: $MSG"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Bump minor version and tag
+        if: steps.check.outputs.skip == 'false'
         id: bump
         run: |
           LATEST=$(git tag --list 'v*' --sort=-v:refname | head -n1)
@@ -56,7 +68,7 @@ jobs:
 
   release:
     needs: tag
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.tag.outputs.new_tag != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -126,6 +126,7 @@ make test
 make lint
 
 # Prepare a release (generates CHANGELOG.md, PR title/description)
+# Requires that claude-code is installed
 make prepare
 
 # Clean build artifacts
