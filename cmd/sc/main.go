@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -176,7 +177,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	// Parse instructions
 	inst, err := instructions.Parse(instPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("no %s found in current directory — run `sc init` to create one", instPath)
 		}
 		return err

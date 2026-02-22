@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -208,8 +209,13 @@ func (p *Pipeline) RelevantSections(id ArtifactID) string {
 	var parts []string
 	switch id {
 	case ArtifactSkill, ArtifactLlmsFull, ArtifactScripts:
-		for name, content := range p.Inst.Sections {
-			parts = append(parts, name+"\n"+content)
+		keys := make([]string, 0, len(p.Inst.Sections))
+		for name := range p.Inst.Sections {
+			keys = append(keys, name)
+		}
+		sort.Strings(keys)
+		for _, name := range keys {
+			parts = append(parts, name+"\n"+p.Inst.Sections[name])
 		}
 	case ArtifactExamples:
 		for _, key := range []string{"Workflows", "Examples", "Common patterns"} {

@@ -152,8 +152,8 @@ func TestGenerateErrorNoInstructions(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no instructions file exists")
 	}
-	if !strings.Contains(err.Error(), "no such file") && !strings.Contains(err.Error(), "sc init") {
-		t.Errorf("error should mention missing file or suggest 'sc init', got: %v", err)
+	if !strings.Contains(err.Error(), "sc init") {
+		t.Errorf("error should suggest 'sc init', got: %v", err)
 	}
 }
 
@@ -298,6 +298,62 @@ func TestDiffDriftDetection(t *testing.T) {
 	if !strings.Contains(string(out), "DRIFTED") && !strings.Contains(string(out), "changed") {
 		// Drift output should mention drifted artifacts
 		t.Logf("diff output: %s", string(out))
+	}
+}
+
+func TestDiffUpToDate(t *testing.T) {
+	// Test that diff exits 0 when lockfile matches current inputs.
+	// We use a two-pass approach: first run generates the lockfile via a helper,
+	// then sc diff should report all artifacts up to date.
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	// Copy petstore.yaml
+	petstore, err := os.ReadFile("../../internal/plugins/openapi/testdata/petstore.yaml")
+	if err != nil {
+		t.Fatalf("reading petstore fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "petstore.yaml"), petstore, 0o644); err != nil {
+		t.Fatalf("writing petstore.yaml: %v", err)
+	}
+
+	validInstructionsFixture(t, dir, "./petstore.yaml")
+
+	// Build the sc binary
+	repoRoot := filepath.Join(mustGetwd(t), "..", "..")
+	binPath := filepath.Join(dir, "sc")
+	build := exec.Command("go", "build", "-o", binPath, "./cmd/sc")
+	build.Dir = repoRoot
+	if out, buildErr := build.CombinedOutput(); buildErr != nil {
+		t.Fatalf("building sc: %v\n%s", buildErr, out)
+	}
+
+	// Generate lockfile by running sc generate --dry-run, then capturing the
+	// hashes. Since dry-run doesn't write the lockfile, we use a different
+	// approach: run the write-lockfile helper from within the repo root,
+	// passing the target directory as an argument.
+	helper := exec.Command("go", "run", "./cmd/sc/testdata/write_lockfile.go", dir)
+	helper.Dir = repoRoot
+	helper.Env = append(os.Environ(), "HOME="+dir)
+	if out, err := helper.CombinedOutput(); err != nil {
+		t.Fatalf("running lockfile helper: %v\n%s", err, out)
+	}
+
+	// Verify lockfile was created
+	if _, err := os.Stat(filepath.Join(dir, ".sc-lock.json")); err != nil {
+		t.Fatalf("lockfile not created: %v", err)
+	}
+
+	// Run diff — should exit 0 (all up to date)
+	cmd := exec.Command(binPath, "diff")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "HOME="+dir)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected exit 0 from diff with matching lockfile, got error: %v\noutput: %s", err, out)
+	}
+	if !strings.Contains(string(out), "up to date") {
+		t.Errorf("output should contain 'up to date', got: %s", string(out))
 	}
 }
 

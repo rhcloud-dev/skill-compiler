@@ -10,6 +10,12 @@ Given a `COMPILER_INSTRUCTIONS.md` file (YAML frontmatter + markdown body) and o
 
 ## Installation
 
+**Quick install:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/roberthamel/skill-compiler/main/install.sh | bash
+```
+
 **From source (requires Go 1.22+):**
 
 ```sh
@@ -57,14 +63,14 @@ sc serve
 |------------|--------------------------------------|----------------|
 | `provider` | LLM provider (`anthropic`, `openai`) | `SC_PROVIDER`  |
 | `model`    | Model name                           | `SC_MODEL`     |
-| `api_key`  | API key                              | `SC_API_KEY`   |
-| `base_url` | Custom API base URL                  | `SC_BASE_URL`  |
+| `api-key`  | API key                              | `SC_API_KEY`   |
+| `base-url` | Custom API base URL                  | `SC_BASE_URL`  |
 
 **Managing config:**
 
 ```sh
 sc config set provider anthropic
-sc config set api_key sk-ant-...
+sc config set api-key sk-ant-...
 sc config list
 sc config reset
 ```
