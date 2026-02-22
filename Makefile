@@ -73,7 +73,8 @@ If no previous tag, start at v0.1.0.) \
 ---END_CHANGELOG--- \
 \
 ---COMMIT_MSG--- \
-(A conventional commit message. First line: type(scope): description under 72 chars. \
+(A conventional commit message for ONLY the current unstaged/staged/untracked changes, \
+NOT the full history since last tag. First line: type(scope): description under 72 chars. \
 Then a blank line, then a body with bullet points summarizing key changes. \
 Types: feat, fix, chore, refactor, docs, test, ci. Pick the most appropriate.) \
 ---END_COMMIT_MSG--- \
