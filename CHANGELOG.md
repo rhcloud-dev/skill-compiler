@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ### Changed
 - CI release job now scans all commits since last tag to determine semver bump type, instead of only the latest commit
+- Added skip logic for non-releasable commit types and scopes (ci, chore, docs, style, test, build) in version bump detection
+- Improved release notes generation with git log fallback when CHANGELOG entry is missing
 - Improved release notes extraction with more robust `awk` parsing in CI workflow
 - Updated goreleaser archive configuration to use `formats` list syntax
 - Restricted CI tag and release jobs to run only on the upstream repository
