@@ -20,9 +20,9 @@ type OpenAI struct {
 func (o *OpenAI) Name() string { return "openai" }
 
 type openaiRequest struct {
-	Model    string           `json:"model"`
-	Messages []openaiMessage  `json:"messages"`
-	MaxCompletionTokens int  `json:"max_completion_tokens,omitempty"`
+	Model               string          `json:"model"`
+	Messages            []openaiMessage `json:"messages"`
+	MaxCompletionTokens int             `json:"max_completion_tokens,omitempty"`
 }
 
 type openaiMessage struct {
@@ -84,7 +84,7 @@ func (o *OpenAI) Generate(ctx context.Context, req GenerateRequest) (*GenerateRe
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respData, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -274,14 +274,14 @@ func parsePackageJSON(path string, stack *ir.StackInfo) {
 	for name, ver := range pkg.Dependencies {
 		stack.Dependencies[name] = ver
 		// Detect frameworks
-		switch {
-		case name == "react":
+		switch name {
+		case "react":
 			stack.Frameworks = appendUniq(stack.Frameworks, "React")
-		case name == "vue":
+		case "vue":
 			stack.Frameworks = appendUniq(stack.Frameworks, "Vue")
-		case name == "express":
+		case "express":
 			stack.Frameworks = appendUniq(stack.Frameworks, "Express")
-		case name == "next":
+		case "next":
 			stack.Frameworks = appendUniq(stack.Frameworks, "Next.js")
 		}
 	}
@@ -422,9 +422,6 @@ func prioritizeFiles(entries []fileInfo, maxFiles int) []fileInfo {
 	var scored2 []scored
 	for _, e := range entries {
 		s := 0
-		if e.isDir {
-			s = 1
-		}
 		base := strings.ToLower(filepath.Base(e.rel))
 		switch {
 		case base == "package.json" || base == "go.mod" || base == "cargo.toml" || base == "pyproject.toml":

@@ -46,14 +46,14 @@ type ArtifactResult struct {
 
 // Options controls artifact generation.
 type Options struct {
-	OutputDir      string
-	Only           []string // generate only these artifact IDs
-	Force          bool
-	DryRun         bool
-	Diff           bool
-	Verbose        bool
-	PrevArtifacts  map[ArtifactID]string   // previous artifact contents for changelog
-	SkipArtifacts  map[ArtifactID]bool     // per-artifact cache hits to skip
+	OutputDir     string
+	Only          []string // generate only these artifact IDs
+	Force         bool
+	DryRun        bool
+	Diff          bool
+	Verbose       bool
+	PrevArtifacts map[ArtifactID]string // previous artifact contents for changelog
+	SkipArtifacts map[ArtifactID]bool   // per-artifact cache hits to skip
 }
 
 // Pipeline generates all artifacts from IR and instructions.

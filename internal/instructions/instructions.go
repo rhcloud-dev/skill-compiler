@@ -17,12 +17,12 @@ type Instructions struct {
 
 // Frontmatter holds all YAML frontmatter fields.
 type Frontmatter struct {
-	Name      string          `yaml:"name"`
-	Spec      yaml.Node       `yaml:"spec"`      // string, object, or array
-	Out       string          `yaml:"out"`        // default: ./sc-out/
+	Name      string              `yaml:"name"`
+	Spec      yaml.Node           `yaml:"spec"`      // string, object, or array
+	Out       string              `yaml:"out"`       // default: ./sc-out/
 	Artifacts map[string]Artifact `yaml:"artifacts"` // per-artifact toggles
-	Skill     SkillConfig     `yaml:"skill"`
-	Provider  ProviderConfig  `yaml:"provider"`
+	Skill     SkillConfig         `yaml:"skill"`
+	Provider  ProviderConfig      `yaml:"provider"`
 }
 
 // SpecSource represents a resolved spec source.

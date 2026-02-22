@@ -1,0 +1,17 @@
+mytool — A sample CLI tool
+
+Usage:
+  mytool [command]
+
+Available Commands:
+  serve         Start the server
+  config        Manage configuration
+  version       Print version info
+
+Flags:
+  -h, --help      string   Show help
+      --verbose   bool     Enable verbose output
+  -o, --output    string   Output directory
+
+Aliases:
+  mytool, mt

@@ -47,7 +47,7 @@ func (p *Plugin) Fetch(source instructions.SpecSource) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("fetching URL %s: %w", source.URL, err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("fetching URL %s: HTTP %d", source.URL, resp.StatusCode)
 		}
@@ -67,10 +67,10 @@ func (p *Plugin) Fetch(source instructions.SpecSource) ([]byte, error) {
 
 // openAPIDoc is a minimal representation for parsing.
 type openAPIDoc struct {
-	OpenAPI    string                        `yaml:"openapi" json:"openapi"`
-	Info       openAPIInfo                   `yaml:"info" json:"info"`
+	OpenAPI    string                          `yaml:"openapi" json:"openapi"`
+	Info       openAPIInfo                     `yaml:"info" json:"info"`
 	Paths      map[string]map[string]openAPIOp `yaml:"paths" json:"paths"`
-	Components *openAPIComponents            `yaml:"components" json:"components"`
+	Components *openAPIComponents              `yaml:"components" json:"components"`
 }
 
 type openAPIInfo struct {
@@ -80,30 +80,30 @@ type openAPIInfo struct {
 }
 
 type openAPIOp struct {
-	OperationID string            `yaml:"operationId" json:"operationId"`
-	Summary     string            `yaml:"summary" json:"summary"`
-	Description string            `yaml:"description" json:"description"`
-	Tags        []string          `yaml:"tags" json:"tags"`
-	Deprecated  bool              `yaml:"deprecated" json:"deprecated"`
-	Security    []map[string][]string `yaml:"security" json:"security"`
-	Parameters  []openAPIParam    `yaml:"parameters" json:"parameters"`
-	RequestBody *openAPIReqBody   `yaml:"requestBody" json:"requestBody"`
+	OperationID string                 `yaml:"operationId" json:"operationId"`
+	Summary     string                 `yaml:"summary" json:"summary"`
+	Description string                 `yaml:"description" json:"description"`
+	Tags        []string               `yaml:"tags" json:"tags"`
+	Deprecated  bool                   `yaml:"deprecated" json:"deprecated"`
+	Security    []map[string][]string  `yaml:"security" json:"security"`
+	Parameters  []openAPIParam         `yaml:"parameters" json:"parameters"`
+	RequestBody *openAPIReqBody        `yaml:"requestBody" json:"requestBody"`
 	Responses   map[string]openAPIResp `yaml:"responses" json:"responses"`
 }
 
 type openAPIParam struct {
-	Name        string `yaml:"name" json:"name"`
-	In          string `yaml:"in" json:"in"`
-	Description string `yaml:"description" json:"description"`
-	Required    bool   `yaml:"required" json:"required"`
+	Name        string         `yaml:"name" json:"name"`
+	In          string         `yaml:"in" json:"in"`
+	Description string         `yaml:"description" json:"description"`
+	Required    bool           `yaml:"required" json:"required"`
 	Schema      *openAPISchema `yaml:"schema" json:"schema"`
-	Ref         string `yaml:"$ref" json:"$ref"`
+	Ref         string         `yaml:"$ref" json:"$ref"`
 }
 
 type openAPIReqBody struct {
-	Description string                       `yaml:"description" json:"description"`
-	Required    bool                         `yaml:"required" json:"required"`
-	Content     map[string]openAPIMediaType  `yaml:"content" json:"content"`
+	Description string                      `yaml:"description" json:"description"`
+	Required    bool                        `yaml:"required" json:"required"`
+	Content     map[string]openAPIMediaType `yaml:"content" json:"content"`
 }
 
 type openAPIMediaType struct {
@@ -111,25 +111,25 @@ type openAPIMediaType struct {
 }
 
 type openAPIResp struct {
-	Description string                       `yaml:"description" json:"description"`
-	Content     map[string]openAPIMediaType  `yaml:"content" json:"content"`
+	Description string                      `yaml:"description" json:"description"`
+	Content     map[string]openAPIMediaType `yaml:"content" json:"content"`
 }
 
 type openAPISchema struct {
-	Ref         string                `yaml:"$ref" json:"$ref"`
-	Type        string                `yaml:"type" json:"type"`
-	Format      string                `yaml:"format" json:"format"`
-	Description string                `yaml:"description" json:"description"`
+	Ref         string                    `yaml:"$ref" json:"$ref"`
+	Type        string                    `yaml:"type" json:"type"`
+	Format      string                    `yaml:"format" json:"format"`
+	Description string                    `yaml:"description" json:"description"`
 	Properties  map[string]*openAPISchema `yaml:"properties" json:"properties"`
-	Items       *openAPISchema        `yaml:"items" json:"items"`
-	Required    []string              `yaml:"required" json:"required"`
-	Enum        []string              `yaml:"enum" json:"enum"`
+	Items       *openAPISchema            `yaml:"items" json:"items"`
+	Required    []string                  `yaml:"required" json:"required"`
+	Enum        []string                  `yaml:"enum" json:"enum"`
 }
 
 type openAPIComponents struct {
-	Schemas         map[string]*openAPISchema        `yaml:"schemas" json:"schemas"`
+	Schemas         map[string]*openAPISchema         `yaml:"schemas" json:"schemas"`
 	SecuritySchemes map[string]*openAPISecurityScheme `yaml:"securitySchemes" json:"securitySchemes"`
-	Parameters      map[string]*openAPIParam         `yaml:"parameters" json:"parameters"`
+	Parameters      map[string]*openAPIParam          `yaml:"parameters" json:"parameters"`
 }
 
 type openAPISecurityScheme struct {

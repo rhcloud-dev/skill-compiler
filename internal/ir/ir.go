@@ -64,8 +64,8 @@ type TypeRef struct {
 
 // Response represents an HTTP response or command output.
 type Response struct {
-	StatusCode  string  `json:"statusCode"`
-	Description string  `json:"description,omitempty"`
+	StatusCode  string   `json:"statusCode"`
+	Description string   `json:"description,omitempty"`
 	Body        *TypeRef `json:"body,omitempty"`
 }
 
@@ -74,7 +74,7 @@ type AuthScheme struct {
 	ID          string `json:"id"`
 	Type        string `json:"type"` // apiKey, http, oauth2, openIdConnect
 	Name        string `json:"name,omitempty"`
-	In          string `json:"in,omitempty"` // header, query, cookie
+	In          string `json:"in,omitempty"`     // header, query, cookie
 	Scheme      string `json:"scheme,omitempty"` // bearer, basic
 	Description string `json:"description,omitempty"`
 }

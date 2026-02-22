@@ -341,7 +341,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 			results[i].Content = generate.PrependChangelogEntry(r.Content, existingChangelog)
 			changelogPath := filepath.Join(outputDir, r.FilePath)
 			if err := os.MkdirAll(filepath.Dir(changelogPath), 0o755); err == nil {
-				os.WriteFile(changelogPath, []byte(results[i].Content), 0o644)
+				_ = os.WriteFile(changelogPath, []byte(results[i].Content), 0o644)
 			}
 		}
 	}
@@ -360,9 +360,9 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 			model = r.Response.Model
 		}
 		lockFile.UpdateEntry(string(r.ID), inputHash, outputHash, model)
-		cache.WriteCached(projectDir, string(r.ID), r.Content)
+		_ = cache.WriteCached(projectDir, string(r.ID), r.Content)
 	}
-	cache.SaveLockFile(projectDir, lockFile)
+	_ = cache.SaveLockFile(projectDir, lockFile)
 
 	fmt.Printf("\nGeneration complete (%s) — output written to %s\n", elapsed.Round(time.Millisecond), outputDir)
 	return nil
@@ -426,9 +426,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	irJSON, _ := json.MarshalIndent(parsedIR, "", "  ")
 
 	specConfig := specFlag
-	if typeFlag == "cli" {
+	switch typeFlag {
+	case "cli":
 		specConfig = fmt.Sprintf("\n  type: cli\n  binary: %s", specFlag)
-	} else if typeFlag == "codebase" {
+	case "codebase":
 		specConfig = "\n  type: codebase\n  path: ."
 	}
 

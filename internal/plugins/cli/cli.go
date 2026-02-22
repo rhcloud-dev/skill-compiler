@@ -279,12 +279,12 @@ func parseHelpOutput(text string) parsedHelp {
 			continue
 		}
 
-		switch {
-		case section == "available commands" || section == "commands" || section == "subcommands":
+		switch section {
+		case "available commands", "commands", "subcommands":
 			if m := subcommandRe.FindStringSubmatch(line); m != nil {
 				result.subcommands = append(result.subcommands, m[1])
 			}
-		case section == "flags" || section == "global flags" || section == "options":
+		case "flags", "global flags", "options":
 			if m := flagRe.FindStringSubmatch(line); m != nil {
 				result.flags = append(result.flags, parsedFlag{
 					shorthand: m[1],

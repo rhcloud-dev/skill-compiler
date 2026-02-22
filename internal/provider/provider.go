@@ -18,10 +18,10 @@ type GenerateRequest struct {
 
 // GenerateResponse is the output from an LLM generation call.
 type GenerateResponse struct {
-	Content    string
-	Model      string
-	TokensIn   int
-	TokensOut  int
+	Content   string
+	Model     string
+	TokensIn  int
+	TokensOut int
 }
 
 // Provider is the interface for LLM providers.
