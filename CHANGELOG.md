@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - Comprehensive test suite for generate, instructions, config, cache, CLI plugins, codebase, OpenAPI, provider, and main packages
 - Auto-tagging workflow for automated version management
 - Changelog generation support
+- Release notes generation in goreleaser configuration
 - README documentation
 - golangci-lint configuration
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - Updated Go version and golangci-lint version in CI
 - Improved error handling in provider and plugin packages
 - Enhanced OpenAPI plugin with better parsing and validation
+- Enhanced goreleaser configuration with release notes generation
 
 ### Fixed
 - Formatting of golangci-lint version in CI configuration
