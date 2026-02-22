@@ -257,16 +257,19 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	// Check cache for each artifact (skip unchanged unless --force)
+	// Check cache per artifact — skip unchanged ones unless --force
+	skipArtifact := make(map[generate.ArtifactID]bool)
 	if !force && !dryRun {
 		fmt.Println("Checking cache...")
 		allUpToDate := true
 		for _, id := range generate.AllArtifacts {
 			prompt := pipeline.SystemPromptFor(id)
-			inputHash := cache.HashInput(specContent, inst.RawBody, prompt)
-			if !lockFile.IsUpToDate(string(id), inputHash) {
+			sections := pipeline.RelevantSections(id)
+			inputHash := cache.HashInput(specContent, sections, prompt)
+			if lockFile.IsUpToDate(string(id), inputHash) {
+				skipArtifact[id] = true
+			} else {
 				allUpToDate = false
-				break
 			}
 		}
 		if allUpToDate {
@@ -274,6 +277,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	}
+	pipeline.Opts.SkipArtifacts = skipArtifact
 
 	// Run generation
 	fmt.Println("Generating artifacts...")
@@ -348,7 +352,8 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		prompt := pipeline.SystemPromptFor(r.ID)
-		inputHash := cache.HashInput(specContent, inst.RawBody, prompt)
+		sections := pipeline.RelevantSections(r.ID)
+		inputHash := cache.HashInput(specContent, sections, prompt)
 		outputHash := cache.HashOutput(r.Content)
 		model := ""
 		if r.Response != nil {
@@ -537,18 +542,48 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	irJSON, _ := json.Marshal(parsedIR)
 	specContent := string(irJSON)
 
+	// Build a pipeline to get per-artifact system prompts and relevant sections
+	pipeline := &generate.Pipeline{
+		IR:   parsedIR,
+		Inst: inst,
+	}
+
 	drifted := false
 	for _, id := range generate.AllArtifacts {
-		// Use empty string as system prompt stand-in for hash comparison
-		inputHash := cache.HashInput(specContent, inst.RawBody, "")
+		prompt := pipeline.SystemPromptFor(id)
+		sections := pipeline.RelevantSections(id)
+		inputHash := cache.HashInput(specContent, sections, prompt)
 		if !lockFile.IsUpToDate(string(id), inputHash) {
 			fmt.Printf("  DRIFTED: %s\n", id)
 			drifted = true
 		}
 	}
 
+	// If --against is provided, compare generated files against that directory
 	if againstDir != "" {
-		fmt.Printf("Comparing against: %s\n", againstDir)
+		outputDir := inst.Frontmatter.Out
+		fmt.Printf("Comparing %s against %s:\n", outputDir, againstDir)
+		for _, id := range generate.AllArtifacts {
+			filePath := pipeline.ArtifactPath(id)
+			currentPath := filepath.Join(outputDir, filePath)
+			againstPath := filepath.Join(againstDir, filePath)
+
+			currentData, currentErr := os.ReadFile(currentPath)
+			againstData, againstErr := os.ReadFile(againstPath)
+
+			if currentErr != nil && againstErr != nil {
+				continue // neither exists
+			} else if currentErr != nil {
+				fmt.Printf("  REMOVED: %s (exists in %s but not in %s)\n", filePath, againstDir, outputDir)
+				drifted = true
+			} else if againstErr != nil {
+				fmt.Printf("  ADDED:   %s (exists in %s but not in %s)\n", filePath, outputDir, againstDir)
+				drifted = true
+			} else if string(currentData) != string(againstData) {
+				fmt.Printf("  CHANGED: %s\n", filePath)
+				drifted = true
+			}
+		}
 	}
 
 	if drifted {

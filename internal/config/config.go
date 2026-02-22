@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/viper"
 )
 
 // Config holds the CLI configuration values.
 type Config struct {
-	Provider string `yaml:"provider,omitempty"`
-	APIKey   string `yaml:"api-key,omitempty"`
-	Model    string `yaml:"model,omitempty"`
-	BaseURL  string `yaml:"base-url,omitempty"`
+	Provider string `yaml:"provider,omitempty" mapstructure:"provider"`
+	APIKey   string `yaml:"api-key,omitempty" mapstructure:"api-key"`
+	Model    string `yaml:"model,omitempty" mapstructure:"model"`
+	BaseURL  string `yaml:"base-url,omitempty" mapstructure:"base-url"`
 }
 
 // ValidKeys lists the allowed config keys.
@@ -28,70 +28,75 @@ func configDir() (string, error) {
 	return filepath.Join(home, ".config", "sc"), nil
 }
 
-func configPath() (string, error) {
+// newViper creates a configured viper instance for sc config.
+func newViper() (*viper.Viper, error) {
 	dir, err := configDir()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return filepath.Join(dir, "config.yaml"), nil
+
+	v := viper.New()
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(dir)
+
+	// Bind SC_* env vars
+	v.SetEnvPrefix("SC")
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	v.AutomaticEnv()
+
+	// Read config file (ignore not-found)
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// Only ignore "not found" — other errors (parse, permission) bubble up
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("reading config: %w", err)
+			}
+		}
+	}
+
+	return v, nil
 }
 
 // Load reads the config file from ~/.config/sc/config.yaml.
 // Returns an empty Config if the file doesn't exist.
 func Load() (*Config, error) {
-	p, err := configPath()
+	v, err := newViper()
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(p)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &Config{}, nil
-		}
-		return nil, fmt.Errorf("reading config: %w", err)
-	}
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing config: %w", err)
-	}
-	return &cfg, nil
+	return &Config{
+		Provider: v.GetString("provider"),
+		APIKey:   v.GetString("api-key"),
+		Model:    v.GetString("model"),
+		BaseURL:  v.GetString("base-url"),
+	}, nil
 }
 
-// Save writes the config to ~/.config/sc/config.yaml.
-func Save(cfg *Config) error {
-	p, err := configPath()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-		return fmt.Errorf("creating config directory: %w", err)
-	}
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("marshaling config: %w", err)
-	}
-	return os.WriteFile(p, data, 0o644)
-}
-
-// Set updates a single key in the config.
+// Set updates a single key in the config file.
 func Set(key, value string) error {
-	cfg, err := Load()
-	if err != nil {
-		return err
-	}
-	switch key {
-	case "provider":
-		cfg.Provider = value
-	case "api-key":
-		cfg.APIKey = value
-	case "model":
-		cfg.Model = value
-	case "base-url":
-		cfg.BaseURL = value
-	default:
+	if !isValidKey(key) {
 		return fmt.Errorf("unknown config key %q (valid keys: %s)", key, strings.Join(ValidKeys, ", "))
 	}
-	return Save(cfg)
+
+	v, err := newViper()
+	if err != nil {
+		return err
+	}
+
+	v.Set(key, value)
+
+	dir, err := configDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+
+	configFile := filepath.Join(dir, "config.yaml")
+	v.SetConfigFile(configFile)
+	return v.WriteConfig()
 }
 
 // List returns key-value pairs for display, masking the API key.
@@ -111,10 +116,11 @@ func List() (map[string]string, error) {
 
 // Reset removes the config file.
 func Reset() error {
-	p, err := configPath()
+	dir, err := configDir()
 	if err != nil {
 		return err
 	}
+	p := filepath.Join(dir, "config.yaml")
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("removing config: %w", err)
 	}
@@ -128,6 +134,15 @@ func maskKey(key string) string {
 	return key[:4] + strings.Repeat("*", len(key)-8) + key[len(key)-4:]
 }
 
+func isValidKey(key string) bool {
+	for _, k := range ValidKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
 // Resolved holds the final resolved provider settings after merging all sources.
 type Resolved struct {
 	Provider string
@@ -138,31 +153,20 @@ type Resolved struct {
 
 // Resolve merges provider settings in priority order:
 // CLI flags > frontmatter > env vars > config file.
+// Viper handles config file + env vars automatically. We layer
+// frontmatter and CLI flags on top.
 func Resolve(cliProvider, cliModel, cliAPIKey, cliBaseURL string, frontmatter *Config) (*Resolved, error) {
-	cfg, err := Load()
+	v, err := newViper()
 	if err != nil {
 		return nil, err
 	}
 
+	// Viper already merged: config file < env vars (SC_PROVIDER, SC_API_KEY, etc.)
 	r := &Resolved{
-		Provider: cfg.Provider,
-		APIKey:   cfg.APIKey,
-		Model:    cfg.Model,
-		BaseURL:  cfg.BaseURL,
-	}
-
-	// Env vars override config file
-	if v := os.Getenv("SC_PROVIDER"); v != "" {
-		r.Provider = v
-	}
-	if v := os.Getenv("SC_API_KEY"); v != "" {
-		r.APIKey = v
-	}
-	if v := os.Getenv("SC_MODEL"); v != "" {
-		r.Model = v
-	}
-	if v := os.Getenv("SC_BASE_URL"); v != "" {
-		r.BaseURL = v
+		Provider: v.GetString("provider"),
+		APIKey:   v.GetString("api-key"),
+		Model:    v.GetString("model"),
+		BaseURL:  v.GetString("base-url"),
 	}
 
 	// Frontmatter overrides env vars

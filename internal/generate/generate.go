@@ -46,13 +46,14 @@ type ArtifactResult struct {
 
 // Options controls artifact generation.
 type Options struct {
-	OutputDir    string
-	Only         []string // generate only these artifact IDs
-	Force        bool
-	DryRun       bool
-	Diff         bool
-	Verbose      bool
-	PrevArtifacts map[ArtifactID]string // previous artifact contents for changelog
+	OutputDir      string
+	Only           []string // generate only these artifact IDs
+	Force          bool
+	DryRun         bool
+	Diff           bool
+	Verbose        bool
+	PrevArtifacts  map[ArtifactID]string   // previous artifact contents for changelog
+	SkipArtifacts  map[ArtifactID]bool     // per-artifact cache hits to skip
 }
 
 // Pipeline generates all artifacts from IR and instructions.
@@ -156,6 +157,12 @@ func (p *Pipeline) generateArtifact(ctx context.Context, id ArtifactID) Artifact
 		}
 	}
 
+	// Skip if cache says this artifact is up to date
+	if p.Opts.SkipArtifacts[id] {
+		fmt.Printf("  Skipping %s (cached)\n", id)
+		return ArtifactResult{ID: id, FilePath: filePath}
+	}
+
 	fmt.Printf("  Generating %s...\n", id)
 
 	if p.Opts.Verbose {
@@ -193,6 +200,38 @@ func (p *Pipeline) generateArtifact(ctx context.Context, id ArtifactID) Artifact
 // SystemPromptFor returns the system prompt for a given artifact ID (exported for cache hashing).
 func (p *Pipeline) SystemPromptFor(id ArtifactID) string {
 	return p.systemPrompt(id)
+}
+
+// RelevantSections returns the instruction sections relevant to a given artifact,
+// concatenated as a single string for cache hashing.
+func (p *Pipeline) RelevantSections(id ArtifactID) string {
+	var parts []string
+	switch id {
+	case ArtifactSkill, ArtifactLlmsFull, ArtifactScripts:
+		for name, content := range p.Inst.Sections {
+			parts = append(parts, name+"\n"+content)
+		}
+	case ArtifactExamples:
+		for _, key := range []string{"Workflows", "Examples", "Common patterns"} {
+			if content, ok := p.Inst.Sections[key]; ok {
+				parts = append(parts, key+"\n"+content)
+			}
+		}
+	case ArtifactLlms:
+		if content, ok := p.Inst.Sections["Product"]; ok {
+			parts = append(parts, "Product\n"+content)
+		}
+	case ArtifactChangelog:
+		// Changelog depends on previous artifacts, not instruction sections
+	default:
+		// reference, llms-api: no specific sections
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+// ArtifactPath returns the relative file path for a given artifact ID.
+func (p *Pipeline) ArtifactPath(id ArtifactID) string {
+	return p.artifactPath(id)
 }
 
 func (p *Pipeline) systemPrompt(id ArtifactID) string {
@@ -274,9 +313,18 @@ func (p *Pipeline) userMessage(id ArtifactID) string {
 			parts = append(parts, fmt.Sprintf("## Instructions: %s\n%s", name, content))
 		}
 	case ArtifactChangelog:
-		if prev, ok := p.Opts.PrevArtifacts[ArtifactChangelog]; ok {
+		hasPrev := false
+		for _, prevID := range []ArtifactID{ArtifactSkill, ArtifactReference, ArtifactExamples} {
+			if prev, ok := p.Opts.PrevArtifacts[prevID]; ok && prev != "" {
+				parts = append(parts, fmt.Sprintf("## Previous %s\n%s", prevID, prev))
+				hasPrev = true
+			}
+		}
+		if prev, ok := p.Opts.PrevArtifacts[ArtifactChangelog]; ok && prev != "" {
 			parts = append(parts, fmt.Sprintf("## Previous CHANGELOG.md\n%s", prev))
-		} else {
+			hasPrev = true
+		}
+		if !hasPrev {
 			parts = append(parts, "## Note\nThis is the first generation — no previous artifacts exist.")
 		}
 	}

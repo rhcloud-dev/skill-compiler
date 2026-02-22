@@ -4,10 +4,10 @@ LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION)"
 .PHONY: build test clean
 
 build: clean
-	go build $(LDFLAGS) -o sc ./cmd/sc/
+	go build $(LDFLAGS) -o dist/sc ./cmd/sc/
 
 test:
 	go test ./...
 
 clean:
-	rm -f sc
+	rm -rf dist

@@ -35,8 +35,10 @@ func LoadPreviousArtifacts(outputDir, skillName string) map[ArtifactID]string {
 // PrependChangelogEntry prepends a new entry to an existing CHANGELOG.md,
 // preserving previous entries.
 func PrependChangelogEntry(newEntry, existingChangelog string) string {
-	date := time.Now().Format("2006-01-02")
-	header := fmt.Sprintf("## %s\n\n", date)
+	now := time.Now()
+	date := now.Format("2006-01-02")
+	weekday := now.Format("Monday")
+	header := fmt.Sprintf("## %s — %s\n\n", date, weekday)
 
 	entry := header + strings.TrimSpace(newEntry) + "\n"
 
@@ -57,14 +59,4 @@ func PrependChangelogEntry(newEntry, existingChangelog string) string {
 
 	// No header — just prepend
 	return entry + "\n" + existingChangelog
-}
-
-// IsFirstRun checks if previous artifacts exist.
-func IsFirstRun(prev map[ArtifactID]string) bool {
-	for _, content := range prev {
-		if content != "" {
-			return false
-		}
-	}
-	return true
 }
