@@ -44,7 +44,7 @@ jobs:
 
           # Non-releasable types — commits with these types OR scopes are skipped
           SKIP_RE='^(ci|chore|docs|style|test|build)(\(.+\))?:'
-          SKIP_SCOPE_RE='^\w+\((ci|chore|docs|style|test|build)\):'
+          SKIP_SCOPE_RE='^[[:alnum:]_]+\((ci|chore|docs|style|test|build)\)!?:'
 
           # Scan all commits since last tag, pick the highest bump level
           BUMP=""
@@ -114,8 +114,13 @@ jobs:
 
           # Fall back to git log if no changelog entry
           if [ ! -s /tmp/release-notes.md ]; then
-            PREV=$(git tag --list 'v*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1)
-            if [ -n "$PREV" ]; then
+            PREV=""
+            # Use git describe to find the previous tag reachable before the current tag
+            if git rev-parse "${TAG}^" >/dev/null 2>&1; then
+              PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+            fi
+
+            if [ -n "$PREV" ] && [ "$PREV" != "$TAG" ]; then
               echo "## What's Changed" > /tmp/release-notes.md
               git log "${PREV}..${TAG}" --format='- %s' >> /tmp/release-notes.md
             else

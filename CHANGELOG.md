@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [v1.2.0] - 2026-02-22
+
+### Fixed
+- Use `grep -vFx` for exact tag matching in release notes fallback to avoid regex interpretation issues
+- Fixed SKIP_SCOPE_RE regex to use POSIX character class and support breaking change indicator (`!`) before colon
+
+### Changed
+- Skip non-releasable commits in CI release workflow to avoid unnecessary version bumps
+- Improved release notes fallback to use `git describe` instead of `git tag --list` for finding previous tag
+- Added guard to prevent self-referencing tag comparison in release notes generation
+
+## [v1.1.0] - 2026-02-22
+
+### Changed
+- Skip non-releasable commits in CI release workflow to avoid unnecessary version bumps
+- Improved release notes fallback when no changelog entry exists for a version
+- Fixed SKIP_SCOPE_RE regex to use POSIX character class and support breaking change indicator (`!`) before colon
+
 ## [v0.6.0] - 2026-02-22
 
 ### Added
