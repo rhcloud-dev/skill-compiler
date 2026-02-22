@@ -1,6 +1,13 @@
 version: 2
 project_name: sc
 
+before:
+  hooks:
+    - go mod tidy
+    - >-
+      bash -c 'sed -n "/^## \[v{{.RawVersion}}\]/,/^## \[v/{/^## \[v{{.RawVersion}}\]/d;/^## \[v/d;p;}" CHANGELOG.md > /tmp/release-notes.md;
+      if [ ! -s /tmp/release-notes.md ]; then echo "Release v{{.Version}}" > /tmp/release-notes.md; fi'
+
 builds:
   - main: ./cmd/sc/
     binary: sc
@@ -20,10 +27,8 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+release:
+  release_notes: /tmp/release-notes.md
+
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
+  disable: true
