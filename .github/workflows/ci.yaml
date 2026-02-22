@@ -66,10 +66,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.3"
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          TAG="${{ needs.tag.outputs.new_tag }}"
+          VER="${TAG#v}"
+          sed -n "/^## \[v${VER}\]/,/^## \[v/{/^## \[v${VER}\]/d;/^## \[v/d;p;}" CHANGELOG.md > /tmp/release-notes.md
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "Release ${TAG}" > /tmp/release-notes.md
+          fi
       - uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
-          args: release --clean
+          args: release --clean --release-notes=/tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ needs.tag.outputs.new_tag }}

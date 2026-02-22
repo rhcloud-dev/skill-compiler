@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [v0.4.0] - 2026-02-22
+
+### Changed
+- Moved release notes extraction from goreleaser hook to CI workflow step
+- Simplified goreleaser configuration by removing inline release notes generation
+- Pass release notes to goreleaser via `--release-notes` CLI flag instead of `release` config block
+
 ## [v0.3.0] - 2026-02-22
 
 ### Changed
@@ -33,6 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 ### Fixed
 - Formatting of golangci-lint version in CI configuration
 
-## [v0.1.0] - 2025-01-01
+## [v0.1.0] - 2026-02-22
 
 Initial release.
